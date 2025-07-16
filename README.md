@@ -14,3 +14,7 @@ Este é um projeto simples para consulta de livros usando a Open Library API.
 1. Clone o repositório:
    
    git clone https://github.com/Brennerodrigues/Desafio-Livros.git
+
+## Deploy em serviço gratuito (Vercel)
+
+   https://desafio-livros-5com.vercel.app/
