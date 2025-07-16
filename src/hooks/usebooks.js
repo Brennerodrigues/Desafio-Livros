@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../services/api';
 
-export function useBooks(searchTerm, page) {
+export function useBooks(searchTerm, page) { //recebe o termo de busca e numero da pagina
   return useQuery({
     queryKey: ['books', searchTerm, page],
     queryFn: async () => {
@@ -13,7 +13,7 @@ export function useBooks(searchTerm, page) {
       });
       return res.data;
     },
-    keepPreviousData: true,
-    staleTime: 1000 * 60 * 5,
+    keepPreviousData: true, //mantem os dados anteriores ao acessar novas paginas
+    staleTime: 1000 * 60 * 5, //Define um tempo de validade
   });
 }
