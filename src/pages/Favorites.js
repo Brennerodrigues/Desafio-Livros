@@ -12,7 +12,6 @@ export function Favorites() {
     //Exibe o título da pagina
     <Box p={4}>
       <Text fontSize="2xl" mb={4}>Livros Favoritos</Text>
-    //verifica se ha favoritos
       {favorites.length === 0 ? (
         <Text>Nenhum favorito ainda.</Text>
       ) : (
