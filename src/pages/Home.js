@@ -12,15 +12,13 @@ export function Home() {
   const { toggleFavorite, isFavorite } = useFavorites(); //adiciona ou remove e verifica se um livro é favorito
 
   return (
-    <Box p={4}>
-    //campo de busca
+    <Box p={4}> 
       <Input
         placeholder="Buscar livros..."
-        value={search} //busca realisada ao digitar
+        value={search} 
         onChange={(e) => setSearch(e.target.value)}
         mb={4}
       />
-      //mostra dados do carregamento e mensagem de erro
       {isLoading && <Spinner />}
       {isError && <Text color="red.500">Erro ao carregar livros.</Text>}
 
@@ -32,7 +30,6 @@ export function Home() {
             borderRadius="md"
             p={4}
             position="relative"
-            // muda cor do fundo se um livro foi selecionado
             bg={isFavorite(book.key) ? 'yellow.50' : 'white'}
           >
             <Image
@@ -47,7 +44,6 @@ export function Home() {
             <Text fontWeight="bold">{book.title}</Text>
             <Text>{book.author_name?.join(', ') || 'Autor desconhecido'}</Text>
             <Text>{book.first_publish_year || 'Ano desconhecido'}</Text>
-              //muda texto e a cor do botao ao selecionar um livro
             <Button
               size="sm"
               mt={2}
@@ -59,7 +55,6 @@ export function Home() {
           </Box>
         ))}
       </SimpleGrid>
-      //cuida da paginacao
       <Box mt={4} display="flex" gap={2} justifyContent="center">
         <Button onClick={() => setPage((p) => Math.max(p - 1, 1))} isDisabled={page === 1}>
           Página anterior
