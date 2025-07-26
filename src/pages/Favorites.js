@@ -32,7 +32,6 @@ export function Favorites() {
               <Text fontWeight="bold">{book.title}</Text>
               <Text>{book.author_name?.join(', ') || 'Autor desconhecido'}</Text>
               <Text>{book.first_publish_year || 'Ano desconhecido'}</Text>
-              //botao de remover
               <Button mt={2} colorScheme="red" onClick={() => toggleFavorite(book)}>
                 Remover
               </Button>
