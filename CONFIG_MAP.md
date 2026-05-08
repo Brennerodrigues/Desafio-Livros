@@ -7,7 +7,12 @@ Formato: `MAJOR.MINOR.PATCH`
 - **MAJOR** → mudança incompatível (breaking change)
 - **MINOR** → nova funcionalidade retrocompatível
 - **PATCH** → correção de bug
-
+- 
+---
+## Versão Baseline
+````bash
+v1.0.0
+````
 ---
 
 ## Itens de Configuração
