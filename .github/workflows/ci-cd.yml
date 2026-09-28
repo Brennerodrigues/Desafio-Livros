@@ -1,0 +1,233 @@
+name: CI/CD - Desafio Livros
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+
+  pull_request:
+    branches:
+      - master
+
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: Ambiente para publicação manual
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "22.x"
+
+jobs:
+  quality:
+    name: Verificações estáticas
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm install
+
+      - name: Verificar vulnerabilidades
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Executar testes automatizados
+        run: npm test -- --watchAll=false --passWithNoTests
+
+      - name: Validar build de produção
+        run: npm run build
+
+      - name: Armazenar build como artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ github.sha }}
+          path: build
+          if-no-files-found: error
+          retention-days: 7
+
+  smoke-test:
+    name: Verificação dinâmica
+    needs: quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm install
+
+      - name: Iniciar aplicação
+        run: npm start > /tmp/desafio-livros.log 2>&1 &
+        env:
+          BROWSER: none
+
+      - name: Aguardar aplicação iniciar
+        run: |
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3000/ | grep -q "root"; then
+              echo "Aplicação iniciada com sucesso."
+              exit 0
+            fi
+
+            echo "Aguardando aplicação..."
+            sleep 2
+          done
+
+          echo "A aplicação não iniciou corretamente."
+          cat /tmp/desafio-livros.log
+          exit 1
+
+      - name: Testar resposta HTTP
+        run: |
+          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/ )
+
+          if [ "$STATUS_CODE" = "200" ]; then
+            echo "Smoke test aprovado. Status HTTP: $STATUS_CODE"
+          else
+            echo "Smoke test reprovado. Status HTTP: $STATUS_CODE"
+            exit 1
+          fi
+
+  deploy-staging:
+    name: Deploy em staging
+    needs: smoke-test
+
+    if: >
+      (github.ref == 'refs/heads/develop' &&
+       github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch' &&
+       inputs.target_environment == 'staging')
+
+    runs-on: ubuntu-latest
+
+    environment:
+      name: staging
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm install
+
+      - name: Instalar Vercel CLI
+        run: npm install --global vercel
+
+      - name: Preparar ambiente Vercel
+        run: |
+          vercel pull \
+            --yes \
+            --environment=preview \
+            --token="${{ secrets.VERCEL_TOKEN }}"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Gerar build de staging
+        run: |
+          vercel build \
+            --token="${{ secrets.VERCEL_TOKEN }}"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Publicar em staging
+        run: |
+          vercel deploy \
+            --prebuilt \
+            --token="${{ secrets.VERCEL_TOKEN }}"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+  deploy-production:
+    name: Deploy em produção
+    needs: smoke-test
+
+    if: >
+      (github.ref == 'refs/heads/master' &&
+       github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch' &&
+       inputs.target_environment == 'production')
+
+    runs-on: ubuntu-latest
+
+    environment:
+      name: production
+      url: https://desafio-livros-two.vercel.app
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm install
+
+      - name: Instalar Vercel CLI
+        run: npm install --global vercel
+
+      - name: Preparar ambiente Vercel
+        run: |
+          vercel pull \
+            --yes \
+            --environment=production \
+            --token="${{ secrets.VERCEL_TOKEN }}"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Gerar build de produção
+        run: |
+          vercel build \
+            --prod \
+            --token="${{ secrets.VERCEL_TOKEN }}"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Publicar em produção
+        run: |
+          vercel deploy \
+            --prebuilt \
+            --prod \
+            --token="${{ secrets.VERCEL_TOKEN }}"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
